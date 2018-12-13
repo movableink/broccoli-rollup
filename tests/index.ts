@@ -159,6 +159,46 @@ export default index;
     });
   });
 
+  describe('sourcemaps', () => {
+    it('creates sourcemaps', async assert => {
+      await using(async use => {
+        const input = use(await createTempDir());
+        const subject = new Rollup(input.path(), {
+          rollup: {
+            input: 'index.js',
+            output: {
+              file: 'out.js',
+              format: 'es',
+              sourcemap: true
+            },
+          },
+        });
+        const output = use(createBuilder(subject));
+        // INITIAL
+        input.write({
+          'add.js': 'export default x => x + x;',
+          'index.js':
+          'import add from "./add"; const two = add(1); export default two;',
+        });
+        await output.build();
+
+        assert.deepEqual(output.read(), {
+          'out.js': `var add = x => x + x;
+
+const two = add(1);
+
+export default two;
+//# sourceMappingURL=out.js.map`,
+          'out.js.map': `{\"version\":3,\"file\":\"out.js\",\"sources\":[\"add.js\",\"index.js\"],\"sourcesContent\":[\"export default x => x + x;\",\"import add from \\\"./add\\\"; const two = add(1); export default two;\"],\"names\":[],\"mappings\":\"AAAA,UAAe,CAAC,IAAI,CAAC,GAAG,CAAC;;qBAAC,rBCAD,MAAM,GAAG,GAAG,GAAG,CAAC,CAAC,CAAC,CAAC;;;;\"}`,
+        });
+        assert.deepEqual(output.changes(), {
+          'out.js': 'create',
+          'out.js.map': 'create',
+        });
+      });
+    });
+  });
+
   describe('targets', hooks => {
     let input: TempDir;
     hooks.beforeEach(async () => {
