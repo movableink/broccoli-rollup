@@ -1,6 +1,6 @@
 {
-  "name": "broccoli-rollup",
-  "version": "2.1.1",
+  "name": "@movable/broccoli-rollup",
+  "version": "2.2.0",
   "description": "Rollup integration with broccoli",
   "main": "dist/index.js",
   "scripts": {
@@ -27,9 +27,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chadhietala/broccoli-rollup"
+    "url": "https://github.com/movableink/broccoli-rollup"
   },
-  "homepage": "https://github.com/chadhietala/broccoli-rollup#readme",
+  "homepage": "https://github.com/movableink/broccoli-rollup#readme",
   "files": [
     "dist/",
     "!dist/tests"
