@@ -6,6 +6,7 @@ import {
   rmdirSync,
   unlinkSync,
   writeFileSync,
+  realpathSync,
 } from 'fs';
 import * as path from 'path';
 import {
@@ -102,6 +103,8 @@ export = class Rollup extends Plugin {
       symlinkOrCopySync(this.nodeModulesPath, `${this.cachePath}/node_modules`);
       mkdirSync((this.innerCachePath = `${this.cachePath}/build`));
     }
+
+    this.innerCachePath = realpathSync(this.innerCachePath);
 
     const newTree = (this.lastTree = treeFromPath(this.inputPaths[0]));
     const patches = lastTree.calculatePatch(newTree);
