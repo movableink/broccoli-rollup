@@ -56,7 +56,7 @@ export = class Rollup extends Plugin {
   public rollupOptions: IRollupOptions;
   public cache: boolean;
   public innerCachePath = '';
-  public nodeModulesPath: string;
+  public nodeModulesPaths: Array<string>;
 
   private _lastChunk: RollupBuild | RollupSingleFileBuild | null;
   private lastTree: ITree;
@@ -69,7 +69,7 @@ export = class Rollup extends Plugin {
       name?: string;
       rollup: IRollupOptions;
       cache?: boolean;
-      nodeModulesPath?: string;
+      nodeModulesPath?: string | Array<string>;
     },
   ) {
     super([node], {
@@ -83,25 +83,44 @@ export = class Rollup extends Plugin {
     this.lastTree = treeFromEntries([]);
     this.cache = options.cache === undefined ? true : options.cache;
 
+    if (Array.isArray(options.nodeModulesPath)) {
+      this.nodeModulesPaths = options.nodeModulesPath;
+    } else if (typeof options.nodeModulesPath === 'string') {
+      this.nodeModulesPaths = [options.nodeModulesPath];
+    } else {
+      this.nodeModulesPaths = [nodeModulesPath(process.cwd())];
+    }
+
     if (
-      options.nodeModulesPath !== undefined &&
-      !path.isAbsolute(options.nodeModulesPath)
+      this.nodeModulesPaths !== undefined &&
+        !this.nodeModulesPaths.every(p => path.isAbsolute(p))
     ) {
       throw new Error(
         `nodeModulesPath must be fully qualified and you passed a relative path`,
       );
     }
-
-    this.nodeModulesPath =
-      options.nodeModulesPath || nodeModulesPath(process.cwd());
   }
 
   public build() {
     const lastTree = this.lastTree;
 
     if (!this.innerCachePath) {
-      symlinkOrCopySync(this.nodeModulesPath, `${this.cachePath}/node_modules`);
-      mkdirSync((this.innerCachePath = `${this.cachePath}/build`));
+      // If passed multiple nodeModulesPaths, we need to build a hierarchy so
+      // that the resolution works properly. For instance, if we had 3 node_modules
+      // directories passed to us, we would have the following directory structure:
+      //
+      //   ${this.cachePath}/node_modules
+      //   ${this.cachePath}/0/node_modules
+      //   ${this.cachePath}/0/1/node_modules
+      //   ${this.cachePath}/0/1/build/index.js
+      //
+      let innerCachePath = this.cachePath;
+      this.nodeModulesPaths.forEach((path, index) => {
+        symlinkOrCopySync(path, `${innerCachePath}/node_modules`);
+        const dir = (index === this.nodeModulesPaths.length - 1) ? 'build' : `${index}`;
+        mkdirSync((innerCachePath = `${innerCachePath}/${dir}`));
+      });
+      this.innerCachePath = innerCachePath;
     }
 
     this.innerCachePath = realpathSync(this.innerCachePath);

@@ -4,6 +4,7 @@ import {
   Disposable,
   TempDir,
 } from 'broccoli-test-helper';
+import { resolve } from 'path';
 import Rollup = require('../index');
 import { IRollupOptions } from '../lib/rollup';
 // tslint:disable-next-line:no-var-requires
@@ -272,6 +273,58 @@ export default two;
           'nodeModulesPath must be fully qualified and you passed a relative path',
         ),
       );
+    });
+
+    it('accepts multiple nodeModulesPath entries', async (assert) => {
+      await using(async use => {
+        const input = use(await createTempDir());
+
+        const subject = new Rollup(input.path(), {
+          nodeModulesPath: [
+            input.path('./a/node_modules'),
+            input.path('./node_modules')
+          ],
+          rollup: {
+            input: 'index.js',
+            output: {
+              file: 'out.js',
+              format: 'es'
+            },
+          },
+        });
+
+        const output = use(createBuilder(subject));
+
+        input.write({
+          'index.js': `
+import a from '../../node_modules/x-module-a/index';
+import b from '../node_modules/x-module-b/index';
+const c = a + b;
+export default c;`,
+          a: {
+            node_modules: {
+              'x-module-a': {
+                'index.js': "export default 1;"
+              }
+            }
+          },
+          node_modules: {
+            'x-module-b': {
+              'index.js': "export default 2;"
+            }
+          }
+        });
+
+        try {
+          await output.build();
+
+          assert.deepEqual(output.read(), {
+            'out.js': "var a = 1;\n\nvar b = 2;\n\nconst c = a + b;\n\nexport default c;\n"
+          });
+        } finally {
+          await output.dispose();
+        }
+      });
     });
   });
 
